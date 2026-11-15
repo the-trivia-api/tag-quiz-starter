@@ -4,13 +4,15 @@ import { tagDescription, tagLabel, type RegistryTag } from "../registry";
 
 type QuizOptionsProps = {
   tag: RegistryTag;
+  /** The language the tag's label and description are shown in */
+  language: string;
   onStart: (settings: QuizSettings) => void;
   onBack: () => void;
 };
 
 const AMOUNTS = [5, 10, 15];
 
-export const QuizOptions = ({ tag, onStart, onBack }: QuizOptionsProps) => {
+export const QuizOptions = ({ tag, language, onStart, onBack }: QuizOptionsProps) => {
   // Never offer more questions than the tag has, e.g. 5, 10 and 12 for a tag with 12
   const amounts = [...new Set(AMOUNTS.map((amount) => Math.min(amount, tag.count)))];
   const defaultAmount = amounts.filter((amount) => amount <= 10).at(-1) ?? amounts[0];
@@ -33,9 +35,11 @@ export const QuizOptions = ({ tag, onStart, onBack }: QuizOptionsProps) => {
     <form action={start} className="card">
       <div>
         <h2 ref={headingRef} tabIndex={-1} className="card__title">
-          {tagLabel(tag)}
+          {tagLabel(tag, language)}
         </h2>
-        {tagDescription(tag) && <p className="card__text">{tagDescription(tag)}</p>}
+        {tagDescription(tag, language) && (
+          <p className="card__text">{tagDescription(tag, language)}</p>
+        )}
       </div>
 
       <div className="fields">

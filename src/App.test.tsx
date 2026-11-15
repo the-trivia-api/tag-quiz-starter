@@ -31,7 +31,26 @@ const REGISTRY: RegistryTag[] = [
   },
 ];
 
-const registryResponse = () => new Response(JSON.stringify(REGISTRY));
+const GERMAN_REGISTRY: RegistryTag[] = [
+  {
+    slug: "place:france",
+    label: { de: "Frankreich" },
+    description: { de: "Fragen über Frankreich." },
+    count: 94,
+  },
+  {
+    slug: "person:albert-einstein",
+    label: { de: "Albert Einstein" },
+    description: { de: "Der Physiker hinter der Relativitätstheorie." },
+    count: 12,
+  },
+];
+
+/** Answers in German when asked for German, otherwise in English */
+const registryResponse = (url: string) =>
+  new Response(
+    JSON.stringify(new URL(url).searchParams.get("language") === "de" ? GERMAN_REGISTRY : REGISTRY)
+  );
 
 const makeQuestion = (id: string, text: string, correctAnswer: string): TextChoiceQuestion => ({
   id,
@@ -53,7 +72,7 @@ const pickTag = async (user: ReturnType<typeof userEvent.setup>, name: string) =
 beforeEach(() => {
   mockGetRandomQuestions.mockReset();
   mockFetch.mockReset();
-  mockFetch.mockImplementation(async () => registryResponse());
+  mockFetch.mockImplementation(async (url) => registryResponse(String(url)));
   vi.stubGlobal("fetch", mockFetch);
 });
 
@@ -193,6 +212,83 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("button", { name: /France/ })).toBeInTheDocument();
+  });
+
+  it("loads the tags again in the language picked, keeping the search and group", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByRole("button", { name: /France/ });
+    expect(mockFetch).toHaveBeenLastCalledWith(
+      "https://the-trivia-api.com/v2/tag-registry?language=en"
+    );
+    await user.type(screen.getByLabelText("Search tags"), "frank");
+    await user.selectOptions(screen.getByLabelText("Group"), "Places");
+
+    expect(screen.getByLabelText("Tag language")).toHaveValue("en");
+    await user.selectOptions(screen.getByLabelText("Tag language"), "Deutsch");
+
+    expect(mockFetch).toHaveBeenLastCalledWith(
+      "https://the-trivia-api.com/v2/tag-registry?language=de"
+    );
+    expect(await screen.findByRole("button", { name: /Frankreich/ })).toHaveTextContent(
+      "Fragen über Frankreich."
+    );
+    expect(screen.getByLabelText("Search tags")).toHaveValue("frank");
+    expect(screen.getByLabelText("Group")).toHaveValue("Places");
+
+    // Only the tags are translated: the questions are still asked for in English
+    mockGetRandomQuestions.mockResolvedValue([makeQuestion("1", "What is brie?", "Cheese")]);
+    await user.click(screen.getByRole("button", { name: /Frankreich/ }));
+    expect(screen.getByRole("heading", { name: "Frankreich" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    expect(mockGetRandomQuestions).toHaveBeenCalledWith({
+      tags: "place:france",
+      limit: 10,
+      difficulties: undefined,
+    });
+    await user.click(await screen.findByRole("button", { name: "Cheese" }));
+    await user.click(screen.getByRole("button", { name: "See results" }));
+    expect(screen.getByText("Frankreich quiz")).toBeInTheDocument();
+  });
+
+  it("keeps the tag's name in the old language until the new tags load", async () => {
+    const user = userEvent.setup();
+    const FRENCH_REGISTRY: RegistryTag[] = [
+      {
+        slug: "place:france",
+        label: { fr: "France (fr)" },
+        description: { fr: "Questions sur la France." },
+        count: 94,
+      },
+    ];
+    let sendGerman = () => {};
+    mockFetch.mockImplementation(async (url) => {
+      const language = new URL(String(url)).searchParams.get("language");
+      if (language === "fr") return new Response(JSON.stringify(FRENCH_REGISTRY));
+      if (language === "de") {
+        // Hold the German tags back until the test sends them
+        await new Promise<void>((resolve) => (sendGerman = resolve));
+      }
+      return registryResponse(String(url));
+    });
+    render(<App />);
+
+    await user.selectOptions(screen.getByLabelText("Tag language"), "Français");
+    await pickTag(user, "France \\(fr\\)");
+    expect(screen.getByRole("heading", { name: "France (fr)" })).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Tag language"), "Deutsch");
+    expect(mockFetch).toHaveBeenLastCalledWith(
+      "https://the-trivia-api.com/v2/tag-registry?language=de"
+    );
+    expect(screen.getByRole("heading", { name: "France (fr)" })).toBeInTheDocument();
+    expect(screen.getByText("Questions sur la France.")).toBeInTheDocument();
+    expect(screen.queryByText("place:france")).not.toBeInTheDocument();
+
+    sendGerman();
+    expect(await screen.findByRole("heading", { name: "Frankreich" })).toBeInTheDocument();
+    expect(screen.getByText("Fragen über Frankreich.")).toBeInTheDocument();
   });
 
   it("explains a rate limit when loading the tags", async () => {

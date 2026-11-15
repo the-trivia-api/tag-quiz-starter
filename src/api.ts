@@ -40,7 +40,7 @@ export const fetchQuestions = async (settings: QuizSettings) => {
 /** A message for the player, depending on why loading the questions or tags failed */
 export const describeError = (error: unknown, loading: "questions" | "tags") => {
   if (error instanceof ApiError && error.status === 429) {
-    // Without an API key, each IP can make 20 requests every 5 seconds
+    // Without an API key, requests are rate limited
     return "Too many requests. Wait a few seconds and try again.";
   }
   return `Couldn't load ${loading}. Check your connection and try again.`;

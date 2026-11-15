@@ -27,12 +27,15 @@ Other scripts:
 
 ## How it works
 
-The app loads the tag registry once when it starts (`GET /v2/tag-registry`). Each tag has a slug like `place:france`, an English label and description, and a count of the multiple choice questions it has. The start of the slug says what kind of tag it is, which the picker uses to group them.
+The app loads the tag registry when it starts (`GET /v2/tag-registry?language=en`). Each tag has a slug like `place:france`, a label and description, and a count of the multiple choice questions it has. The labels and descriptions come in the language you ask for (`{ "label": { "fr": "France" } }` for `language=fr`), and `tagLabel` and `tagDescription` fall back to English, then the slug, if one is missing. The start of the slug says what kind of tag it is, which the picker uses to group them.
+
+The "Tag language" menu in the header loads the registry again in another language. The search and group are kept, and the search looks at the text being shown.
 
 When the player picks a tag, the questions come from The Trivia API through [`@trivia-api/sdk`](https://www.npmjs.com/package/@trivia-api/sdk), with `getRandomQuestions({ tags: "place:france", limit: 10 })`.
 
 - [`src/registry.ts`](src/registry.ts) fetches the tag registry with plain `fetch`, and has the types and helpers for reading it
-- [`src/useTagRegistry.ts`](src/useTagRegistry.ts) loads the registry when the app starts, with loading and error states
+- [`src/languages.ts`](src/languages.ts) lists the languages the registry has labels in
+- [`src/useTagRegistry.ts`](src/useTagRegistry.ts) loads the registry when the app starts and when the language changes, with loading and error states
 - [`src/api.ts`](src/api.ts) fetches the questions for a tag, and turns errors into something a player can read (e.g. when you hit the rate limit)
 - [`src/App.tsx`](src/App.tsx) holds the state of the game: picking a tag, choosing options, loading, playing, finished or errored
 - [`src/shuffle.ts`](src/shuffle.ts) mixes the correct answer in with the incorrect ones, without bias
@@ -46,9 +49,13 @@ The tests mock `fetch` and the SDK, so they never call the real API. That's prob
 
 If you pass several tags in one request (`tags: "place:france,music:rock"`), the API returns questions with any of them, so tags are combined with OR, not AND. This example always sends exactly one tag.
 
+### Tag language
+
+Tag names are translated, but the questions are in English: translated questions need an API key with a Complete subscription, so this example doesn't pass `language` to `getRandomQuestions`.
+
 ### No API key needed
 
-Everything here works without a key. Without one, each IP address can make 20 requests every 5 seconds and get up to 50 questions per request. If the player goes over the rate limit, the app asks them to wait a few seconds and try again.
+Everything here works without a key.
 
 ## Going further
 
