@@ -16,13 +16,12 @@ export type RegistryTag = {
 const REGISTRY_URL = "https://the-trivia-api.com/v2/tag-registry";
 
 /**
- * Gets every tag in the registry, with the most questions first. The labels
- * and descriptions only come in the language asked for (see languages.ts).
- * This uses plain fetch, but throws the same ApiError as the SDK when the
- * request fails, so errors from both can be handled in one place.
+ * Gets every tag in the registry, with the most questions first. This uses
+ * plain fetch, but throws the same ApiError as the SDK when the request
+ * fails, so errors from both can be handled in one place.
  */
-export const fetchTagRegistry = async (language = "en"): Promise<RegistryTag[]> => {
-  const response = await fetch(`${REGISTRY_URL}?${new URLSearchParams({ language })}`);
+export const fetchTagRegistry = async (): Promise<RegistryTag[]> => {
+  const response = await fetch(REGISTRY_URL);
   if (!response.ok) {
     throw new ApiError(response.status, await response.text(), response.statusText);
   }
@@ -31,13 +30,11 @@ export const fetchTagRegistry = async (language = "en"): Promise<RegistryTag[]> 
   return tags.sort((a, b) => b.count - a.count);
 };
 
-/** The tag's name in the language, falling back to English, then its slug */
-export const tagLabel = (tag: RegistryTag, language = "en") =>
-  tag.label?.[language] ?? tag.label?.en ?? tag.slug;
+/** The tag's English name, or its slug if it doesn't have one */
+export const tagLabel = (tag: RegistryTag) => tag.label?.en ?? tag.slug;
 
-/** The tag's description in the language, falling back to English, then nothing */
-export const tagDescription = (tag: RegistryTag, language = "en") =>
-  tag.description?.[language] ?? tag.description?.en ?? "";
+/** The tag's English description, or nothing if it doesn't have one */
+export const tagDescription = (tag: RegistryTag) => tag.description?.en ?? "";
 
 /** The start of a slug ("place" in "place:france") says what kind of tag it is */
 const GROUPS: Record<string, string> = {

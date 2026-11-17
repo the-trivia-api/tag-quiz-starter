@@ -4,8 +4,6 @@ import { GROUP_NAMES, groupOf, tagDescription, tagLabel, type RegistryTag } from
 type TagPickerProps = {
   /** Every tag in the registry, most questions first */
   tags: RegistryTag[];
-  /** The language the labels are shown, and searched, in */
-  language?: string;
   onPick: (tag: RegistryTag) => void;
 };
 
@@ -21,7 +19,7 @@ const PAGE_SIZE = 50;
 
 const pluralise = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
-export const TagPicker = ({ tags, language = "en", onPick }: TagPickerProps) => {
+export const TagPicker = ({ tags, onPick }: TagPickerProps) => {
   const [search, setSearch] = useState("");
   const [group, setGroup] = useState("All");
   const [showSmallTags, setShowSmallTags] = useState(false);
@@ -32,8 +30,8 @@ export const TagPicker = ({ tags, language = "en", onPick }: TagPickerProps) => 
     (tag) =>
       (showSmallTags || tag.count >= MIN_QUESTIONS) &&
       (group === "All" || groupOf(tag.slug) === group) &&
-      (tagLabel(tag, language).toLowerCase().includes(query) ||
-        tagDescription(tag, language).toLowerCase().includes(query))
+      (tagLabel(tag).toLowerCase().includes(query) ||
+        tagDescription(tag).toLowerCase().includes(query))
   );
   const shownTags = matches.slice(0, shownCount);
 
@@ -115,9 +113,9 @@ export const TagPicker = ({ tags, language = "en", onPick }: TagPickerProps) => 
                   aria-disabled={isEmpty}
                   onClick={() => !isEmpty && onPick(tag)}
                 >
-                  <span className="tag__label">{tagLabel(tag, language)}</span>
-                  {tagDescription(tag, language) && (
-                    <span className="tag__description">{tagDescription(tag, language)}</span>
+                  <span className="tag__label">{tagLabel(tag)}</span>
+                  {tagDescription(tag) && (
+                    <span className="tag__description">{tagDescription(tag)}</span>
                   )}
                   <span className="tag__meta">
                     {groupOf(tag.slug)} · {pluralise(tag.count, "question")}

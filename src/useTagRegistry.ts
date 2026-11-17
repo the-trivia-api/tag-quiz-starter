@@ -8,39 +8,29 @@ type RegistryState =
   | { status: "ready"; tags: RegistryTag[] };
 
 /**
- * Loads the tag registry when the app starts, and again whenever the language
- * changes. Unlike the questions, nothing has to be clicked first, so this is
- * an effect. In development StrictMode runs it twice, and `ignore` drops the
- * first response (and the response for a language that's no longer wanted).
+ * Loads the tag registry once, when the app starts. Unlike the questions,
+ * nothing has to be clicked first, so this is an effect. In development
+ * StrictMode runs it twice, and `ignore` drops the first response.
  */
-export const useTagRegistry = (language = "en") => {
+export const useTagRegistry = () => {
+  const [registry, setRegistry] = useState<RegistryState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
-  // The last response, with the request it answered
-  const [loaded, setLoaded] = useState<{ key: string; state: RegistryState } | null>(null);
-  // The last tags that loaded, kept while another language loads
-  const [lastTags, setLastTags] = useState<{ language: string; tags: RegistryTag[] } | null>(
-    null
-  );
-  const key = `${language} ${attempt}`;
 
   useEffect(() => {
     let ignore = false;
-    const settle = (state: RegistryState) => !ignore && setLoaded({ key, state });
-    fetchTagRegistry(language).then(
-      (tags) => {
-        if (!ignore) setLastTags({ language, tags });
-        settle({ status: "ready", tags });
-      },
-      (error) => settle({ status: "error", message: describeError(error, "tags") })
+    fetchTagRegistry().then(
+      (tags) => !ignore && setRegistry({ status: "ready", tags }),
+      (error) => !ignore && setRegistry({ status: "error", message: describeError(error, "tags") })
     );
     return () => {
       ignore = true;
     };
-  }, [key, language]);
+  }, [attempt]);
 
-  // Until the response for this language (and attempt) comes back, it's loading
-  const registry: RegistryState = loaded?.key === key ? loaded.state : { status: "loading" };
-  const retry = () => setAttempt((attempt) => attempt + 1);
+  const retry = () => {
+    setRegistry({ status: "loading" });
+    setAttempt((attempt) => attempt + 1);
+  };
 
-  return { registry, lastTags, retry };
+  return { registry, retry };
 };

@@ -22,24 +22,8 @@ describe("fetchTagRegistry", () => {
 
     const tags = await fetchTagRegistry();
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://the-trivia-api.com/v2/tag-registry?language=en"
-    );
+    expect(fetchMock).toHaveBeenCalledWith("https://the-trivia-api.com/v2/tag-registry");
     expect(tags.map((tag) => tag.slug)).toEqual(["place:france", "music:rock", "animal:axolotls"]);
-  });
-
-  it("asks for the labels and descriptions in another language", async () => {
-    const fetchMock = respondWith([
-      { slug: "animal:axolotls", label: { fr: "Axolotls" }, count: 3 },
-      { slug: "place:turkey", label: { fr: "Turquie (pays)" }, count: 34 },
-    ]);
-
-    const tags = await fetchTagRegistry("fr");
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://the-trivia-api.com/v2/tag-registry?language=fr"
-    );
-    expect(tags.map((tag) => tag.slug)).toEqual(["place:turkey", "animal:axolotls"]);
   });
 
   it("throws an ApiError with the status when the request fails", async () => {
@@ -63,33 +47,6 @@ describe("tagLabel and tagDescription", () => {
 
     expect(tagLabel(tag)).toBe("France");
     expect(tagDescription(tag)).toBe("Questions about France.");
-  });
-
-  it("read the text in the language asked for", () => {
-    const tag = {
-      slug: "place:turkey",
-      label: { fr: "Turquie (pays)" },
-      description: { fr: "Questions sur la Turquie." },
-      count: 34,
-    };
-
-    expect(tagLabel(tag, "fr")).toBe("Turquie (pays)");
-    expect(tagDescription(tag, "fr")).toBe("Questions sur la Turquie.");
-  });
-
-  it("fall back to English, then the slug, when the language is missing", () => {
-    const english = {
-      slug: "place:turkey",
-      label: { en: "Turkey (country)" },
-      description: { en: "Questions about Turkey." },
-      count: 34,
-    };
-    const neither = { slug: "place:turkey", label: { de: "Türkei" }, count: 34 };
-
-    expect(tagLabel(english, "fr")).toBe("Turkey (country)");
-    expect(tagDescription(english, "fr")).toBe("Questions about Turkey.");
-    expect(tagLabel(neither, "fr")).toBe("place:turkey");
-    expect(tagDescription(neither, "fr")).toBe("");
   });
 
   it("fall back when there's no English text", () => {

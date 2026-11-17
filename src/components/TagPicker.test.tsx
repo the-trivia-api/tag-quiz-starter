@@ -64,24 +64,6 @@ describe("TagPicker", () => {
     expect(shownTags()).toEqual(["Rock music"]);
   });
 
-  it("searches the labels in the language shown, not in English", async () => {
-    const user = userEvent.setup();
-    const turkey: RegistryTag = {
-      slug: "place:turkey",
-      label: { fr: "Turquie (pays)" },
-      description: { fr: "Istanbul, Ankara et la Cappadoce." },
-      count: 34,
-    };
-    render(<TagPicker tags={[turkey, ...TAGS]} language="fr" onPick={vi.fn()} />);
-
-    await user.type(screen.getByLabelText("Search tags"), "turquie");
-    expect(shownTags()).toEqual(["Turquie (pays)"]);
-
-    await user.clear(screen.getByLabelText("Search tags"));
-    await user.type(screen.getByLabelText("Search tags"), "turkey");
-    expect(screen.getByText("No tags match your search.")).toBeInTheDocument();
-  });
-
   it("filters by group", async () => {
     const user = userEvent.setup();
     render(<TagPicker tags={TAGS} onPick={vi.fn()} />);

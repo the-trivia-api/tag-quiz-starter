@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { describeError, fetchQuestions, type QuizSettings } from "./api";
-import { LANGUAGES } from "./languages";
 import { tagLabel, type RegistryTag } from "./registry";
 import { shuffle } from "./shuffle";
 import { isCorrect, type Round } from "./types";
@@ -24,21 +23,8 @@ type GameState =
   | { status: "finished"; settings: QuizSettings; rounds: Round[] };
 
 export const App = () => {
-  const [language, setLanguage] = useState("en");
-  const { registry, lastTags, retry: retryRegistry } = useTagRegistry(language);
+  const { registry, retry: retryRegistry } = useTagRegistry();
   const [game, setGame] = useState<GameState>({ status: "picking" });
-
-  // After the language changes, the registry has a new copy of each tag, with
-  // the labels in that language. Until it loads, the last tags that loaded
-  // (and their language) are used, so the old name stays on screen
-  const inLanguage = (tag: RegistryTag) => {
-    const loaded = lastTags?.tags.find(({ slug }) => slug === tag.slug);
-    return loaded && lastTags ? { tag: loaded, language: lastTags.language } : { tag, language };
-  };
-  const labelOf = (tag: RegistryTag) => {
-    const shown = inLanguage(tag);
-    return tagLabel(shown.tag, shown.language);
-  };
 
   // Fetching from the event handler, rather than an effect, means one click is
   // always one request (effects run twice in development with StrictMode)
@@ -105,25 +91,6 @@ export const App = () => {
             The Trivia API
           </a>
         </p>
-        <label className="field header__language">
-          <span className="field__label">Tag language</span>
-          <select
-            className="select"
-            value={language}
-            onChange={(event) => setLanguage(event.target.value)}
-            aria-describedby="language-note"
-          >
-            {LANGUAGES.map(({ code, name }) => (
-              <option key={code} value={code} lang={code}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p id="language-note" className="header__note">
-          Tag names are translated. The questions are in English unless you use an API key with a
-          Complete subscription.
-        </p>
       </header>
 
       <main>
@@ -137,26 +104,12 @@ export const App = () => {
                 onRetry={retryRegistry}
               />
             )}
-            {registry.status !== "error" && (
-              // Hidden rather than removed while another language loads, so
-              // the search and group are kept
-              <div hidden={registry.status === "loading"}>
-                <TagPicker
-                  tags={registry.status === "ready" ? registry.tags : []}
-                  language={language}
-                  onPick={pickTag}
-                />
-              </div>
-            )}
+            {registry.status === "ready" && <TagPicker tags={registry.tags} onPick={pickTag} />}
           </>
         )}
 
         {game.status === "options" && (
-          <QuizOptions
-            {...inLanguage(game.tag)}
-            onStart={startQuiz}
-            onBack={pickAnotherTag}
-          />
+          <QuizOptions tag={game.tag} onStart={startQuiz} onBack={pickAnotherTag} />
         )}
 
         {game.status === "loading" && <StatusCard title="Loading questions…" isLoading />}
@@ -186,7 +139,7 @@ export const App = () => {
         {game.status === "finished" && (
           <Results
             rounds={game.rounds}
-            tagLabel={labelOf(game.settings.tag)}
+            tagLabel={tagLabel(game.settings.tag)}
             onPlayAgain={() => startQuiz(game.settings)}
             onPickAnotherTag={pickAnotherTag}
           />
